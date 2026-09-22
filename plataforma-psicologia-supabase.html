@@ -1,0 +1,1024 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Plataforma de Psicología | Colegio</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          colors: {
+            primary: {
+              50: '#f0fdfa', 100: '#ccfbf1', 200: '#99f6e4', 300: '#5eead4',
+              400: '#2dd4bf', 500: '#14b8a6', 600: '#0d9488', 700: '#0f766e',
+              800: '#115e59', 900: '#134e4a',
+            }
+          }
+        }
+      }
+    }
+  </script>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css" />
+  <style>
+    body { font-family: 'Segoe UI', system-ui, sans-serif; }
+    .fade-in { animation: fadeIn 0.25s ease-out; }
+    @keyframes fadeIn { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: translateY(0); } }
+    .chat-bubble { max-width: 78%; }
+    ::-webkit-scrollbar { width: 6px; height: 6px; }
+    ::-webkit-scrollbar-track { background: #f1f5f9; }
+    ::-webkit-scrollbar-thumb { background: #94a3b8; border-radius: 3px; }
+    .line-clamp-2 { display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+  </style>
+</head>
+<body class="bg-slate-50 text-slate-800 min-h-screen">
+
+  <!-- LOGIN -->
+  <div id="login-screen" class="min-h-screen flex items-center justify-center p-4">
+    <div class="bg-white rounded-2xl shadow-xl max-w-md w-full overflow-hidden">
+      <div class="bg-primary-600 text-white p-7 text-center">
+        <div class="w-14 h-14 bg-white/20 rounded-full flex items-center justify-center mx-auto mb-3">
+          <i class="fas fa-brain text-2xl"></i>
+        </div>
+        <h1 class="text-2xl font-bold">Plataforma de Psicología</h1>
+        <p class="text-primary-100 mt-1 text-sm">Colegio · Conectado a Supabase</p>
+      </div>
+      <div class="p-6">
+        <form id="login-form" onsubmit="handleLogin(event)" class="space-y-4">
+          <div>
+            <label class="block text-sm font-medium text-slate-700 mb-1">Correo electrónico</label>
+            <input type="email" id="login-email" required class="w-full border border-slate-300 rounded-lg px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500" placeholder="tu@correo.cl" value="psicologa@colegio.cl">
+          </div>
+          <div>
+            <label class="block text-sm font-medium text-slate-700 mb-1">Contraseña</label>
+            <input type="password" id="login-password" required class="w-full border border-slate-300 rounded-lg px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500" placeholder="••••••••" value="SagradoCorazon">
+          </div>
+          <button type="submit" id="btn-login" class="w-full bg-primary-600 hover:bg-primary-700 text-white font-medium py-2.5 rounded-lg transition">
+            Ingresar
+          </button>
+        </form>
+        <div class="relative my-5">
+          <div class="absolute inset-0 flex items-center"><div class="w-full border-t border-slate-200"></div></div>
+          <div class="relative flex justify-center text-xs"><span class="bg-white px-2 text-slate-400">acceso rápido (demo)</span></div>
+        </div>
+        <div class="grid grid-cols-3 gap-2">
+          <button type="button" onclick="quickLogin('psicologa@colegio.cl')" class="text-xs border border-slate-200 hover:border-pink-400 hover:bg-pink-50 rounded-lg py-2.5 transition">
+            <i class="fas fa-user-md text-pink-500 block mb-1"></i> Psicóloga
+          </button>
+          <button type="button" onclick="quickLogin('estudiante@colegio.cl')" class="text-xs border border-slate-200 hover:border-blue-400 hover:bg-blue-50 rounded-lg py-2.5 transition">
+            <i class="fas fa-graduation-cap text-blue-500 block mb-1"></i> Estudiante
+          </button>
+          <button type="button" onclick="quickLogin('padre@colegio.cl')" class="text-xs border border-slate-200 hover:border-amber-400 hover:bg-amber-50 rounded-lg py-2.5 transition">
+            <i class="fas fa-users text-amber-500 block mb-1"></i> Apoderado
+          </button>
+        </div>
+        <div class="mt-5 p-3 bg-slate-50 rounded-lg text-xs text-slate-500 space-y-1">
+          <p class="font-medium text-slate-600">Usuarios de prueba (Supabase Auth):</p>
+          <p>psicologa@colegio.cl / SagradoCorazon</p>
+          <p>estudiante@colegio.cl / SagradoCorazon</p>
+          <p>padre@colegio.cl / SagradoCorazon</p>
+        </div>
+        <p id="login-error" class="text-red-500 text-sm text-center mt-3 hidden"></p>
+        <p id="login-status" class="text-slate-400 text-xs text-center mt-2"></p>
+      </div>
+    </div>
+  </div>
+
+  <!-- APP -->
+  <div id="app" class="hidden min-h-screen flex flex-col pb-16 md:pb-0">
+    <header class="bg-white border-b border-slate-200 sticky top-0 z-40">
+      <div class="max-w-6xl mx-auto px-4 h-14 flex items-center justify-between">
+        <div class="flex items-center gap-2.5">
+          <div class="w-8 h-8 bg-primary-600 text-white rounded-lg flex items-center justify-center text-sm"><i class="fas fa-brain"></i></div>
+          <div>
+            <div class="font-bold text-slate-800 text-sm leading-tight">Psicología</div>
+            <div class="text-[11px] text-slate-500" id="role-label">—</div>
+          </div>
+        </div>
+        <div class="flex items-center gap-3">
+          <span id="user-name" class="text-sm font-medium text-slate-700 hidden sm:inline"></span>
+          <span class="text-[10px] px-1.5 py-0.5 rounded bg-green-100 text-green-700 hidden sm:inline" id="db-badge">Supabase</span>
+          <button onclick="logout()" class="text-sm text-slate-500 hover:text-red-600 flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg hover:bg-red-50 transition">
+            <i class="fas fa-sign-out-alt"></i><span class="hidden sm:inline">Salir</span>
+          </button>
+        </div>
+      </div>
+    </header>
+
+    <div class="flex-1 max-w-6xl mx-auto w-full flex">
+      <aside class="hidden md:block w-52 border-r border-slate-200 bg-white p-3 sticky top-14 h-[calc(100vh-3.5rem)] overflow-y-auto">
+        <nav class="space-y-0.5" id="sidebar-nav"></nav>
+      </aside>
+
+      <main class="flex-1 p-4 md:p-5 overflow-y-auto">
+        <section id="view-feed" class="view fade-in">
+          <div class="flex items-center justify-between mb-5">
+            <h2 class="text-lg font-bold text-slate-800">Publicaciones</h2>
+            <button id="btn-nueva-pub" onclick="openModal('modal-publicacion')" class="hidden bg-primary-600 hover:bg-primary-700 text-white px-3.5 py-2 rounded-lg text-sm font-medium flex items-center gap-2 transition"><i class="fas fa-plus"></i> Nueva</button>
+          </div>
+          <div id="feed-list" class="space-y-4"></div>
+        </section>
+
+        <section id="view-material" class="view hidden fade-in">
+          <div class="flex items-center justify-between mb-5">
+            <h2 class="text-lg font-bold text-slate-800">Material de apoyo</h2>
+            <button id="btn-nuevo-material" onclick="openModal('modal-material')" class="hidden bg-primary-600 hover:bg-primary-700 text-white px-3.5 py-2 rounded-lg text-sm font-medium flex items-center gap-2 transition"><i class="fas fa-plus"></i> Subir</button>
+          </div>
+          <div id="material-list" class="grid sm:grid-cols-2 lg:grid-cols-3 gap-3"></div>
+        </section>
+
+        <section id="view-comunicados" class="view hidden fade-in">
+          <div class="flex items-center justify-between mb-5">
+            <h2 class="text-lg font-bold text-slate-800">Comunicados</h2>
+            <button id="btn-nuevo-comunicado" onclick="openModal('modal-comunicado')" class="hidden bg-primary-600 hover:bg-primary-700 text-white px-3.5 py-2 rounded-lg text-sm font-medium flex items-center gap-2 transition"><i class="fas fa-bullhorn"></i> Nuevo</button>
+          </div>
+          <div id="comunicados-list" class="space-y-3"></div>
+        </section>
+
+        <section id="view-juegos" class="view hidden fade-in">
+          <div class="flex items-center justify-between mb-5">
+            <h2 class="text-lg font-bold text-slate-800">Juegos Mentales</h2>
+            <button id="btn-nuevo-juego" onclick="openModal('modal-juego')" class="hidden bg-primary-600 hover:bg-primary-700 text-white px-3.5 py-2 rounded-lg text-sm font-medium flex items-center gap-2 transition"><i class="fas fa-plus"></i> Agregar juego</button>
+          </div>
+          <p class="text-sm text-slate-500 mb-4">Ejercicios y juegos para entrenar atención, memoria y relajación.</p>
+          <div id="juegos-list" class="grid sm:grid-cols-2 lg:grid-cols-3 gap-3"></div>
+        </section>
+
+        <section id="view-historial" class="view hidden fade-in">
+          <div class="flex items-center justify-between mb-5">
+            <h2 class="text-lg font-bold text-slate-800">Estudiantes e Historial</h2>
+            <button onclick="abrirModalNuevoEstudiante()" class="bg-primary-600 hover:bg-primary-700 text-white px-3.5 py-2 rounded-lg text-sm font-medium flex items-center gap-2 transition"><i class="fas fa-user-plus"></i> Nuevo estudiante</button>
+          </div>
+          <div class="flex flex-col lg:flex-row gap-4">
+            <div class="lg:w-64 flex-shrink-0">
+              <div class="bg-white rounded-xl border border-slate-200 overflow-hidden">
+                <div class="px-4 py-3 border-b border-slate-200 bg-slate-50 text-sm font-medium text-slate-600">Estudiantes (<span id="count-estudiantes">0</span>)</div>
+                <div id="historial-estudiantes" class="divide-y divide-slate-100 max-h-[28rem] overflow-y-auto"></div>
+              </div>
+            </div>
+            <div class="flex-1" id="historial-detalle">
+              <div class="bg-white rounded-xl border border-slate-200 p-8 text-center text-slate-400">
+                <i class="fas fa-user-graduate text-4xl mb-3"></i>
+                <p>Selecciona un estudiante para ver su perfil, historial clínico e incidentes</p>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <section id="view-chat" class="view hidden fade-in">
+          <h2 class="text-lg font-bold text-slate-800 mb-4">Conversaciones</h2>
+          <div class="bg-white rounded-xl border border-slate-200 overflow-hidden flex flex-col" style="height: calc(100vh - 11rem);">
+            <div class="flex flex-1 overflow-hidden">
+              <div class="w-full sm:w-64 border-r border-slate-200 overflow-y-auto" id="chat-list"></div>
+              <div class="flex-1 flex flex-col hidden sm:flex" id="chat-area">
+                <div class="p-3 border-b border-slate-200 bg-slate-50 flex items-center gap-3">
+                  <div id="chat-avatar" class="w-9 h-9 rounded-full bg-primary-100 text-primary-700 flex items-center justify-center font-bold text-sm"></div>
+                  <div>
+                    <div id="chat-name" class="font-semibold text-sm"></div>
+                    <div id="chat-role" class="text-xs text-slate-500"></div>
+                  </div>
+                </div>
+                <div id="chat-messages" class="flex-1 overflow-y-auto p-4 space-y-2.5 bg-slate-50"></div>
+                <div class="p-3 border-t border-slate-200 bg-white">
+                  <div class="flex gap-2">
+                    <input type="text" id="chat-input" placeholder="Escribe un mensaje..." class="flex-1 border border-slate-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500" onkeypress="if(event.key==='Enter') sendMessage()">
+                    <button onclick="sendMessage()" class="bg-primary-600 hover:bg-primary-700 text-white px-3.5 py-2 rounded-lg transition"><i class="fas fa-paper-plane"></i></button>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <section id="view-gestion" class="view hidden fade-in">
+          <h2 class="text-lg font-bold text-slate-800 mb-5">Gestión</h2>
+          <div class="grid sm:grid-cols-4 gap-3 mb-6">
+            <div class="bg-white rounded-xl border border-slate-200 p-4">
+              <div class="text-2xl font-bold text-primary-600" id="stat-estudiantes">0</div>
+              <div class="text-xs text-slate-500 mt-0.5">Estudiantes</div>
+            </div>
+            <div class="bg-white rounded-xl border border-slate-200 p-4">
+              <div class="text-2xl font-bold text-blue-600" id="stat-sesiones">0</div>
+              <div class="text-xs text-slate-500 mt-0.5">Notas clínicas</div>
+            </div>
+            <div class="bg-white rounded-xl border border-slate-200 p-4">
+              <div class="text-2xl font-bold text-amber-600" id="stat-incidentes">0</div>
+              <div class="text-xs text-slate-500 mt-0.5">Incidentes</div>
+            </div>
+            <div class="bg-white rounded-xl border border-slate-200 p-4">
+              <div class="text-2xl font-bold text-purple-600" id="stat-archivos">0</div>
+              <div class="text-xs text-slate-500 mt-0.5">Archivos clínicos</div>
+            </div>
+          </div>
+          <div class="bg-white rounded-xl border border-slate-200 overflow-hidden">
+            <div class="px-4 py-2.5 border-b border-slate-200 bg-slate-50 text-sm font-medium text-slate-600">Resumen de incidentes del año</div>
+            <div id="gestion-incidentes-anio" class="p-4"></div>
+          </div>
+        </section>
+      </main>
+    </div>
+    <nav class="md:hidden fixed bottom-0 left-0 right-0 bg-white border-t border-slate-200 flex justify-around py-1.5 z-40" id="mobile-nav"></nav>
+  </div>
+
+  <!-- MODALES (simplificados, mismos IDs) -->
+  <div id="modal-publicacion" class="fixed inset-0 bg-black/50 z-50 hidden items-center justify-center p-4">
+    <div class="bg-white rounded-2xl max-w-lg w-full max-h-[90vh] overflow-y-auto">
+      <div class="p-4 border-b border-slate-200 flex items-center justify-between sticky top-0 bg-white">
+        <h3 class="font-bold">Nueva publicación</h3>
+        <button onclick="closeModal('modal-publicacion')" class="text-slate-400 hover:text-slate-600 text-xl">&times;</button>
+      </div>
+      <div class="p-4 space-y-3">
+        <div><label class="block text-sm font-medium mb-1">Título</label><input type="text" id="pub-titulo" class="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-primary-500"></div>
+        <div><label class="block text-sm font-medium mb-1">Contenido</label><textarea id="pub-contenido" rows="3" class="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-primary-500"></textarea></div>
+        <div><label class="block text-sm font-medium mb-1">Imagen (URL)</label><input type="url" id="pub-imagen-url" class="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm" placeholder="https://..."></div>
+        <div><label class="block text-sm font-medium mb-1">Video (URL)</label><input type="url" id="pub-video" class="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm"></div>
+        <div class="flex gap-2 pt-1">
+          <button onclick="closeModal('modal-publicacion')" class="flex-1 border border-slate-300 py-2 rounded-lg text-sm">Cancelar</button>
+          <button onclick="crearPublicacion()" class="flex-1 bg-primary-600 text-white py-2 rounded-lg text-sm">Publicar</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div id="modal-material" class="fixed inset-0 bg-black/50 z-50 hidden items-center justify-center p-4">
+    <div class="bg-white rounded-2xl max-w-lg w-full">
+      <div class="p-4 border-b flex justify-between"><h3 class="font-bold">Subir material</h3><button onclick="closeModal('modal-material')" class="text-xl">&times;</button></div>
+      <div class="p-4 space-y-3">
+        <div><label class="block text-sm font-medium mb-1">Título</label><input type="text" id="mat-titulo" class="w-full border rounded-lg px-3 py-2 text-sm"></div>
+        <div><label class="block text-sm font-medium mb-1">Descripción</label><textarea id="mat-desc" rows="2" class="w-full border rounded-lg px-3 py-2 text-sm"></textarea></div>
+        <div><label class="block text-sm font-medium mb-1">Tipo</label>
+          <select id="mat-tipo" class="w-full border rounded-lg px-3 py-2 text-sm"><option value="pdf">PDF</option><option value="video">Video</option><option value="audio">Audio</option><option value="link">Enlace</option></select>
+        </div>
+        <div><label class="block text-sm font-medium mb-1">URL</label><input type="url" id="mat-url" class="w-full border rounded-lg px-3 py-2 text-sm"></div>
+        <div class="flex gap-2"><button onclick="closeModal('modal-material')" class="flex-1 border py-2 rounded-lg text-sm">Cancelar</button><button onclick="crearMaterial()" class="flex-1 bg-primary-600 text-white py-2 rounded-lg text-sm">Subir</button></div>
+      </div>
+    </div>
+  </div>
+
+  <div id="modal-comunicado" class="fixed inset-0 bg-black/50 z-50 hidden items-center justify-center p-4">
+    <div class="bg-white rounded-2xl max-w-lg w-full">
+      <div class="p-4 border-b flex justify-between"><h3 class="font-bold">Nuevo comunicado</h3><button onclick="closeModal('modal-comunicado')" class="text-xl">&times;</button></div>
+      <div class="p-4 space-y-3">
+        <div><label class="block text-sm font-medium mb-1">Asunto</label><input type="text" id="com-asunto" class="w-full border rounded-lg px-3 py-2 text-sm"></div>
+        <div><label class="block text-sm font-medium mb-1">Mensaje</label><textarea id="com-mensaje" rows="3" class="w-full border rounded-lg px-3 py-2 text-sm"></textarea></div>
+        <div><label class="block text-sm font-medium mb-1">Dirigido a</label>
+          <select id="com-destino" class="w-full border rounded-lg px-3 py-2 text-sm"><option value="todos">Todos</option><option value="estudiantes">Estudiantes</option><option value="padres">Padres</option></select>
+        </div>
+        <div class="flex gap-2"><button onclick="closeModal('modal-comunicado')" class="flex-1 border py-2 rounded-lg text-sm">Cancelar</button><button onclick="crearComunicado()" class="flex-1 bg-primary-600 text-white py-2 rounded-lg text-sm">Enviar</button></div>
+      </div>
+    </div>
+  </div>
+
+  <div id="modal-juego" class="fixed inset-0 bg-black/50 z-50 hidden items-center justify-center p-4">
+    <div class="bg-white rounded-2xl max-w-lg w-full">
+      <div class="p-4 border-b flex justify-between"><h3 class="font-bold">Agregar juego</h3><button onclick="closeModal('modal-juego')" class="text-xl">&times;</button></div>
+      <div class="p-4 space-y-3">
+        <div><label class="block text-sm font-medium mb-1">Nombre</label><input type="text" id="juego-titulo" class="w-full border rounded-lg px-3 py-2 text-sm"></div>
+        <div><label class="block text-sm font-medium mb-1">Descripción</label><textarea id="juego-desc" rows="2" class="w-full border rounded-lg px-3 py-2 text-sm"></textarea></div>
+        <div><label class="block text-sm font-medium mb-1">Categoría</label>
+          <select id="juego-cat" class="w-full border rounded-lg px-3 py-2 text-sm"><option value="atencion">Atención</option><option value="memoria">Memoria</option><option value="relajacion">Relajación</option><option value="emociones">Emociones</option><option value="otro">Otro</option></select>
+        </div>
+        <div><label class="block text-sm font-medium mb-1">URL</label><input type="url" id="juego-url" class="w-full border rounded-lg px-3 py-2 text-sm"></div>
+        <div class="flex gap-2"><button onclick="closeModal('modal-juego')" class="flex-1 border py-2 rounded-lg text-sm">Cancelar</button><button onclick="crearJuego()" class="flex-1 bg-primary-600 text-white py-2 rounded-lg text-sm">Agregar</button></div>
+      </div>
+    </div>
+  </div>
+
+  <div id="modal-nuevo-estudiante" class="fixed inset-0 bg-black/50 z-50 hidden items-center justify-center p-4">
+    <div class="bg-white rounded-2xl max-w-lg w-full max-h-[90vh] overflow-y-auto">
+      <div class="p-4 border-b flex justify-between"><h3 class="font-bold" id="modal-est-titulo">Nuevo estudiante</h3><button onclick="closeModal('modal-nuevo-estudiante')" class="text-xl">&times;</button></div>
+      <div class="p-4 space-y-3">
+        <input type="hidden" id="est-id">
+        <div class="grid grid-cols-2 gap-3">
+          <div><label class="block text-sm font-medium mb-1">Nombre</label><input type="text" id="est-nombre" class="w-full border rounded-lg px-3 py-2 text-sm"></div>
+          <div><label class="block text-sm font-medium mb-1">Apellido</label><input type="text" id="est-apellido" class="w-full border rounded-lg px-3 py-2 text-sm"></div>
+        </div>
+        <div>
+          <label class="block text-sm font-medium mb-1">Grado / Curso</label>
+          <select id="est-grado" class="w-full border rounded-lg px-3 py-2 text-sm">
+            <option value="1° Básico">1° Básico</option><option value="2° Básico">2° Básico</option><option value="3° Básico">3° Básico</option>
+            <option value="4° Básico">4° Básico</option><option value="5° Básico">5° Básico</option><option value="6° Básico">6° Básico</option>
+            <option value="7° Básico">7° Básico</option><option value="8° Básico">8° Básico</option>
+            <option value="1° Medio">1° Medio</option><option value="2° Medio">2° Medio</option><option value="3° Medio">3° Medio</option><option value="4° Medio">4° Medio</option>
+          </select>
+        </div>
+        <div><label class="block text-sm font-medium mb-1">Foto (URL)</label><input type="url" id="est-foto-url" class="w-full border rounded-lg px-3 py-2 text-sm" placeholder="https://..."></div>
+        <div class="flex gap-2"><button onclick="closeModal('modal-nuevo-estudiante')" class="flex-1 border py-2 rounded-lg text-sm">Cancelar</button><button onclick="guardarEstudiante()" class="flex-1 bg-primary-600 text-white py-2 rounded-lg text-sm">Guardar</button></div>
+      </div>
+    </div>
+  </div>
+
+  <div id="modal-nota" class="fixed inset-0 bg-black/50 z-50 hidden items-center justify-center p-4">
+    <div class="bg-white rounded-2xl max-w-lg w-full max-h-[90vh] overflow-y-auto">
+      <div class="p-4 border-b flex justify-between"><h3 class="font-bold">Nueva nota clínica</h3><button onclick="closeModal('modal-nota')" class="text-xl">&times;</button></div>
+      <div class="p-4 space-y-3">
+        <input type="hidden" id="nota-estudiante-id">
+        <div><label class="block text-sm font-medium mb-1">Fecha</label><input type="date" id="nota-fecha" class="w-full border rounded-lg px-3 py-2 text-sm"></div>
+        <div><label class="block text-sm font-medium mb-1">Motivo</label><input type="text" id="nota-motivo" class="w-full border rounded-lg px-3 py-2 text-sm"></div>
+        <div><label class="block text-sm font-medium mb-1">Observaciones</label><textarea id="nota-obs" rows="4" class="w-full border rounded-lg px-3 py-2 text-sm"></textarea></div>
+        <div><label class="block text-sm font-medium mb-1">Intervenciones</label><textarea id="nota-interv" rows="2" class="w-full border rounded-lg px-3 py-2 text-sm"></textarea></div>
+        <div class="flex gap-2"><button onclick="closeModal('modal-nota')" class="flex-1 border py-2 rounded-lg text-sm">Cancelar</button><button onclick="guardarNota()" class="flex-1 bg-primary-600 text-white py-2 rounded-lg text-sm">Guardar</button></div>
+      </div>
+    </div>
+  </div>
+
+  <div id="modal-incidente" class="fixed inset-0 bg-black/50 z-50 hidden items-center justify-center p-4">
+    <div class="bg-white rounded-2xl max-w-lg w-full max-h-[90vh] overflow-y-auto">
+      <div class="p-4 border-b flex justify-between"><h3 class="font-bold">Registrar incidente</h3><button onclick="closeModal('modal-incidente')" class="text-xl">&times;</button></div>
+      <div class="p-4 space-y-3">
+        <input type="hidden" id="inc-estudiante-id">
+        <div><label class="block text-sm font-medium mb-1">Fecha</label><input type="date" id="inc-fecha" class="w-full border rounded-lg px-3 py-2 text-sm"></div>
+        <div><label class="block text-sm font-medium mb-1">Tipo</label>
+          <select id="inc-tipo" class="w-full border rounded-lg px-3 py-2 text-sm"><option value="conductual">Conductual</option><option value="emocional">Emocional</option><option value="academico">Académico</option><option value="social">Social</option><option value="familiar">Familiar</option><option value="otro">Otro</option></select>
+        </div>
+        <div><label class="block text-sm font-medium mb-1">Gravedad</label>
+          <select id="inc-gravedad" class="w-full border rounded-lg px-3 py-2 text-sm"><option value="leve">Leve</option><option value="moderado">Moderado</option><option value="grave">Grave</option></select>
+        </div>
+        <div><label class="block text-sm font-medium mb-1">Descripción</label><textarea id="inc-desc" rows="3" class="w-full border rounded-lg px-3 py-2 text-sm"></textarea></div>
+        <div><label class="block text-sm font-medium mb-1">Acciones</label><textarea id="inc-acciones" rows="2" class="w-full border rounded-lg px-3 py-2 text-sm"></textarea></div>
+        <div class="flex gap-2"><button onclick="closeModal('modal-incidente')" class="flex-1 border py-2 rounded-lg text-sm">Cancelar</button><button onclick="guardarIncidente()" class="flex-1 bg-primary-600 text-white py-2 rounded-lg text-sm">Registrar</button></div>
+      </div>
+    </div>
+  </div>
+
+  <div id="modal-archivo" class="fixed inset-0 bg-black/50 z-50 hidden items-center justify-center p-4">
+    <div class="bg-white rounded-2xl max-w-lg w-full">
+      <div class="p-4 border-b flex justify-between"><h3 class="font-bold">Subir archivo clínico</h3><button onclick="closeModal('modal-archivo')" class="text-xl">&times;</button></div>
+      <div class="p-4 space-y-3">
+        <input type="hidden" id="arch-estudiante-id">
+        <div><label class="block text-sm font-medium mb-1">Nombre</label><input type="text" id="arch-nombre" class="w-full border rounded-lg px-3 py-2 text-sm"></div>
+        <div><label class="block text-sm font-medium mb-1">Nombre del archivo</label><input type="text" id="arch-file-name" class="w-full border rounded-lg px-3 py-2 text-sm" placeholder="informe.pdf"></div>
+        <div><label class="block text-sm font-medium mb-1">URL del archivo (opcional)</label><input type="url" id="arch-file-url" class="w-full border rounded-lg px-3 py-2 text-sm"></div>
+        <div class="flex gap-2"><button onclick="closeModal('modal-archivo')" class="flex-1 border py-2 rounded-lg text-sm">Cancelar</button><button onclick="guardarArchivo()" class="flex-1 bg-primary-600 text-white py-2 rounded-lg text-sm">Subir</button></div>
+      </div>
+    </div>
+  </div>
+
+  <div id="toast" class="fixed bottom-20 md:bottom-5 left-1/2 -translate-x-1/2 bg-slate-800 text-white px-4 py-2.5 rounded-lg shadow-lg text-sm hidden z-50"></div>
+
+  <script>
+    // ==================== SUPABASE ====================
+    const SUPABASE_URL = 'https://diezpfqkuonoahyndycx.supabase.co';
+    const SUPABASE_KEY = 'sb_publishable_dmdv72M_RJ_OfFfuZqK0Ew_Xs4xXEtk';
+
+    const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+
+    // Mapeo de email → rol
+    const ROLE_MAP = {
+      'psicologa@colegio.cl': 'psicologa',
+      'estudiante@colegio.cl': 'estudiante',
+      'padre@colegio.cl': 'padre'
+    };
+    const USERS_INFO = {
+      psicologa: { nombre: 'Dra. Camila Rojas', rol: 'Psicóloga', avatar: 'CR' },
+      estudiante: { nombre: 'Martín López', rol: 'Estudiante · 2° Medio', avatar: 'ML' },
+      padre: { nombre: 'Ana López', rol: 'Apoderada de Martín', avatar: 'AL' }
+    };
+
+    let currentRole = null;
+    let currentChatId = null;
+    let selectedEstudianteId = null;
+    let historialTab = 'notas';
+    let filtroIncMes = '';
+    let filtroIncAnio = new Date().getFullYear().toString();
+
+    // Cache local de datos
+    let estudiantes = [];
+    let publicaciones = [];
+    let materiales = [];
+    let comunicados = [];
+    let juegos = [];
+    let notasCache = {};      // { estudianteId: [...] }
+    let incidentesCache = {}; // { estudianteId: [...] }
+    let archivosCache = {};   // { estudianteId: [...] }
+    let mensajesCache = {};
+
+    // ==================== AUTH ====================
+    async function handleLogin(e) {
+      e.preventDefault();
+      const email = document.getElementById('login-email').value.trim().toLowerCase();
+      const pass = document.getElementById('login-password').value;
+      const errEl = document.getElementById('login-error');
+      const statusEl = document.getElementById('login-status');
+      const btn = document.getElementById('btn-login');
+      errEl.classList.add('hidden');
+      statusEl.textContent = 'Conectando con Supabase...';
+      btn.disabled = true;
+
+      try {
+        const { data, error } = await supabase.auth.signInWithPassword({ email, password: pass });
+        if (error) throw error;
+        const role = ROLE_MAP[email] || 'estudiante';
+        statusEl.textContent = 'Cargando datos...';
+        await enterApp(role);
+      } catch (err) {
+        console.error(err);
+        errEl.textContent = err.message || 'Error al iniciar sesión. ¿Creaste los usuarios en Auth?';
+        errEl.classList.remove('hidden');
+        statusEl.textContent = '';
+        // Fallback demo sin Auth real
+        if (ROLE_MAP[email] && pass === 'SagradoCorazon') {
+          statusEl.textContent = 'Entrando en modo demo (Auth no configurado aún)...';
+          await enterApp(ROLE_MAP[email]);
+        }
+      } finally {
+        btn.disabled = false;
+      }
+    }
+
+    async function quickLogin(email) {
+      document.getElementById('login-email').value = email;
+      document.getElementById('login-password').value = 'SagradoCorazon';
+      document.getElementById('login-form').requestSubmit();
+    }
+
+    async function enterApp(role) {
+      currentRole = role;
+      document.getElementById('login-screen').classList.add('hidden');
+      document.getElementById('app').classList.remove('hidden');
+      const user = USERS_INFO[role];
+      document.getElementById('role-label').textContent = user.rol;
+      document.getElementById('user-name').textContent = user.nombre;
+      setupNav();
+      const isPsi = role === 'psicologa';
+      ['btn-nueva-pub','btn-nuevo-material','btn-nuevo-comunicado','btn-nuevo-juego'].forEach(id => {
+        document.getElementById(id)?.classList.toggle('hidden', !isPsi);
+      });
+      await loadAllData();
+      showView('feed');
+    }
+
+    async function logout() {
+      try { await supabase.auth.signOut(); } catch(e) {}
+      currentRole = null; currentChatId = null; selectedEstudianteId = null;
+      document.getElementById('app').classList.add('hidden');
+      document.getElementById('login-screen').classList.remove('hidden');
+      document.getElementById('login-status').textContent = '';
+    }
+
+    // ==================== LOAD DATA FROM SUPABASE ====================
+    async function loadAllData() {
+      showToast('Cargando datos desde Supabase...');
+      try {
+        const [est, pubs, mats, coms, jugs] = await Promise.all([
+          supabase.from('estudiantes').select('*').order('apellido'),
+          supabase.from('publicaciones').select('*').order('created_at', { ascending: false }),
+          supabase.from('materiales').select('*').order('created_at', { ascending: false }),
+          supabase.from('comunicados').select('*').order('created_at', { ascending: false }),
+          supabase.from('juegos').select('*').order('created_at', { ascending: false })
+        ]);
+
+        if (est.error) console.warn('estudiantes:', est.error.message);
+        if (pubs.error) console.warn('publicaciones:', pubs.error.message);
+
+        estudiantes = est.data || [];
+        publicaciones = pubs.data || [];
+        materiales = mats.data || [];
+        comunicados = coms.data || [];
+        juegos = jugs.data || [];
+
+        // Cargar notas, incidentes y archivos de todos
+        if (estudiantes.length) {
+          const ids = estudiantes.map(e => e.id);
+          const [notas, incs, archs] = await Promise.all([
+            supabase.from('notas_clinicas').select('*').in('estudiante_id', ids).order('fecha', { ascending: false }),
+            supabase.from('incidentes').select('*').in('estudiante_id', ids).order('fecha', { ascending: false }),
+            supabase.from('archivos_clinicos').select('*').in('estudiante_id', ids).order('created_at', { ascending: false })
+          ]);
+          notasCache = {}; incidentesCache = {}; archivosCache = {};
+          (notas.data || []).forEach(n => {
+            if (!notasCache[n.estudiante_id]) notasCache[n.estudiante_id] = [];
+            notasCache[n.estudiante_id].push(n);
+          });
+          (incs.data || []).forEach(i => {
+            if (!incidentesCache[i.estudiante_id]) incidentesCache[i.estudiante_id] = [];
+            incidentesCache[i.estudiante_id].push(i);
+          });
+          (archs.data || []).forEach(a => {
+            if (!archivosCache[a.estudiante_id]) archivosCache[a.estudiante_id] = [];
+            archivosCache[a.estudiante_id].push(a);
+          });
+        }
+
+        renderAll();
+        showToast('Datos cargados ✓');
+      } catch (err) {
+        console.error(err);
+        showToast('Error cargando datos: ' + (err.message || 'revisa tablas y RLS'));
+      }
+    }
+
+    // ==================== NAV ====================
+    function setupNav() {
+      const isPsi = currentRole === 'psicologa';
+      const items = [
+        { id: 'feed', icon: 'fa-home', label: 'Inicio' },
+        { id: 'material', icon: 'fa-book-open', label: 'Material' },
+        { id: 'juegos', icon: 'fa-gamepad', label: 'Juegos' },
+        { id: 'comunicados', icon: 'fa-bullhorn', label: 'Comunicados' },
+        { id: 'chat', icon: 'fa-comments', label: 'Chat' }
+      ];
+      if (isPsi) {
+        items.push({ id: 'historial', icon: 'fa-user-graduate', label: 'Estudiantes' });
+        items.push({ id: 'gestion', icon: 'fa-chart-bar', label: 'Gestión' });
+      }
+      document.getElementById('sidebar-nav').innerHTML = items.map(i => `
+        <button onclick="showView('${i.id}')" data-view="${i.id}" class="nav-btn w-full flex items-center gap-2.5 px-3 py-2 rounded-lg text-sm font-medium text-slate-600 hover:bg-primary-50 hover:text-primary-700 transition">
+          <i class="fas ${i.icon} w-4 text-center"></i> ${i.label}
+        </button>`).join('');
+      document.getElementById('mobile-nav').innerHTML = items.slice(0, 5).map(i => `
+        <button onclick="showView('${i.id}')" data-view="${i.id}" class="nav-btn flex flex-col items-center gap-0.5 px-1.5 py-1 text-slate-500 hover:text-primary-600">
+          <i class="fas ${i.icon} text-base"></i><span class="text-[10px]">${i.label}</span>
+        </button>`).join('') + (isPsi ? `
+        <button onclick="showView('historial')" data-view="historial" class="nav-btn flex flex-col items-center gap-0.5 px-1.5 py-1 text-slate-500 hover:text-primary-600">
+          <i class="fas fa-user-graduate text-base"></i><span class="text-[10px]">Alumnos</span>
+        </button>` : '');
+    }
+
+    function showView(viewId) {
+      document.querySelectorAll('.view').forEach(v => v.classList.add('hidden'));
+      document.getElementById('view-' + viewId)?.classList.remove('hidden');
+      document.querySelectorAll('.nav-btn').forEach(btn => {
+        const active = btn.dataset.view === viewId;
+        btn.classList.toggle('bg-primary-50', active);
+        btn.classList.toggle('text-primary-700', active);
+      });
+      if (viewId === 'historial') renderEstudiantesLista();
+      if (viewId === 'gestion') renderGestion();
+      if (viewId === 'chat') renderChatList();
+    }
+
+    function renderAll() {
+      renderFeed(); renderMaterial(); renderComunicados(); renderJuegos(); renderGestion();
+    }
+
+    // ==================== RENDER ====================
+    function renderFeed() {
+      const c = document.getElementById('feed-list');
+      if (!publicaciones.length) { c.innerHTML = '<p class="text-slate-400 text-center py-10">No hay publicaciones. ¿Ejecutaste el SQL?</p>'; return; }
+      c.innerHTML = publicaciones.map(p => `
+        <article class="bg-white rounded-xl border border-slate-200 overflow-hidden shadow-sm">
+          <div class="p-3.5 flex items-center gap-2.5">
+            <div class="w-9 h-9 rounded-full bg-pink-100 text-pink-700 flex items-center justify-center font-bold text-xs">CR</div>
+            <div><div class="font-semibold text-sm">${p.autor || 'Psicóloga'}</div>
+            <div class="text-xs text-slate-500">${p.created_at ? new Date(p.created_at).toLocaleDateString('es') : ''}</div></div>
+          </div>
+          ${p.imagen ? `<img src="${p.imagen}" class="w-full h-44 object-cover" onerror="this.style.display='none'">` : ''}
+          ${p.video ? `<div class="px-3.5 pb-2"><a href="${p.video}" target="_blank" class="text-sm text-primary-600 hover:underline"><i class="fas fa-play-circle"></i> Ver video</a></div>` : ''}
+          <div class="p-3.5 pt-2">
+            <h3 class="font-bold text-slate-800 mb-1">${p.titulo}</h3>
+            <p class="text-sm text-slate-600">${p.contenido}</p>
+            <div class="mt-2 text-slate-500 text-sm"><i class="far fa-heart"></i> ${p.likes || 0}</div>
+          </div>
+        </article>`).join('');
+    }
+
+    function renderMaterial() {
+      const icons = { pdf: 'fa-file-pdf', video: 'fa-play-circle', audio: 'fa-headphones', link: 'fa-link' };
+      const colors = { pdf: 'text-red-500', video: 'text-blue-500', audio: 'text-purple-500', link: 'text-teal-500' };
+      document.getElementById('material-list').innerHTML = materiales.map(m => `
+        <div class="bg-white rounded-xl border p-4 hover:shadow-md transition">
+          <div class="w-10 h-10 rounded-lg bg-slate-100 flex items-center justify-center mb-2"><i class="fas ${icons[m.tipo]||'fa-file'} text-lg ${colors[m.tipo]||''}"></i></div>
+          <h3 class="font-semibold text-sm">${m.titulo}</h3>
+          <p class="text-xs text-slate-500 line-clamp-2 mb-2">${m.descripcion || ''}</p>
+          <div class="flex justify-between items-center">
+            <span class="text-[10px] text-primary-600 uppercase">${m.tipo}</span>
+            ${m.url ? `<a href="${m.url}" target="_blank" class="text-xs text-primary-600">Abrir</a>` : ''}
+          </div>
+        </div>`).join('') || '<p class="text-slate-400 col-span-full text-center py-8">Sin material</p>';
+    }
+
+    function renderComunicados() {
+      let list = comunicados;
+      if (currentRole === 'estudiante') list = list.filter(c => c.destino === 'todos' || c.destino === 'estudiantes');
+      if (currentRole === 'padre') list = list.filter(c => c.destino === 'todos' || c.destino === 'padres');
+      document.getElementById('comunicados-list').innerHTML = list.map(c => `
+        <div class="bg-white rounded-xl border p-4">
+          <div class="flex gap-3">
+            <div class="w-9 h-9 rounded-full bg-amber-100 text-amber-700 flex items-center justify-center"><i class="fas fa-bullhorn text-sm"></i></div>
+            <div class="flex-1">
+              <div class="flex justify-between"><h3 class="font-semibold text-sm">${c.asunto}</h3>
+              <span class="text-xs text-slate-400">${c.created_at ? new Date(c.created_at).toLocaleDateString('es') : ''}</span></div>
+              <p class="text-sm text-slate-600 mt-1">${c.mensaje}</p>
+            </div>
+          </div>
+        </div>`).join('') || '<p class="text-slate-400 text-center py-8">Sin comunicados</p>';
+    }
+
+    const catLabels = { atencion: 'Atención', memoria: 'Memoria', relajacion: 'Relajación', emociones: 'Emociones', otro: 'Otro' };
+    const catColors = { atencion: 'bg-blue-100 text-blue-700', memoria: 'bg-purple-100 text-purple-700', relajacion: 'bg-teal-100 text-teal-700', emociones: 'bg-pink-100 text-pink-700', otro: 'bg-slate-100 text-slate-600' };
+
+    function renderJuegos() {
+      document.getElementById('juegos-list').innerHTML = juegos.map(j => `
+        <div class="bg-white rounded-xl border p-4 flex flex-col">
+          <div class="flex justify-between mb-2">
+            <div class="w-10 h-10 rounded-lg bg-indigo-50 text-indigo-600 flex items-center justify-center"><i class="fas fa-gamepad"></i></div>
+            <span class="text-[10px] px-2 py-0.5 rounded-full ${catColors[j.categoria]||catColors.otro}">${catLabels[j.categoria]||j.categoria}</span>
+          </div>
+          <h3 class="font-semibold text-sm mb-1">${j.titulo}</h3>
+          <p class="text-xs text-slate-500 flex-1 mb-3">${j.descripcion || ''}</p>
+          ${j.url ? `<a href="${j.url}" target="_blank" class="text-center bg-primary-600 text-white text-xs font-medium py-2 rounded-lg">Jugar</a>` : ''}
+        </div>`).join('') || '<p class="text-slate-400 col-span-full text-center py-8">Sin juegos</p>';
+    }
+
+    // ==================== ESTUDIANTES ====================
+    function renderEstudiantesLista() {
+      document.getElementById('count-estudiantes').textContent = estudiantes.length;
+      document.getElementById('historial-estudiantes').innerHTML = estudiantes.map(e => {
+        const notas = (notasCache[e.id] || []).length;
+        const incs = (incidentesCache[e.id] || []).length;
+        const active = selectedEstudianteId === e.id;
+        const av = e.avatar || ((e.nombre||'')[0] + (e.apellido||'')[0]);
+        return `
+          <button onclick="selectEstudiante('${e.id}')" class="w-full flex items-center gap-2.5 px-3 py-2.5 text-left hover:bg-slate-50 ${active?'bg-primary-50':''}">
+            ${e.foto_url ? `<img src="${e.foto_url}" class="w-9 h-9 rounded-full object-cover">` : `<div class="w-9 h-9 rounded-full bg-slate-100 flex items-center justify-center text-xs font-bold">${av}</div>`}
+            <div class="flex-1 min-w-0">
+              <div class="text-sm font-medium truncate">${e.nombre} ${e.apellido}</div>
+              <div class="text-xs text-slate-500">${e.grado} · ${notas}N · ${incs}I</div>
+            </div>
+          </button>`;
+      }).join('') || '<p class="p-4 text-slate-400 text-sm">Sin estudiantes. Ejecuta el SQL.</p>';
+      if (selectedEstudianteId) selectEstudiante(selectedEstudianteId);
+    }
+
+    function selectEstudiante(id) {
+      selectedEstudianteId = id;
+      const est = estudiantes.find(e => e.id === id);
+      if (!est) return;
+      const notas = notasCache[id] || [];
+      const incidentes = incidentesCache[id] || [];
+      const archivos = archivosCache[id] || [];
+      let incsFiltrados = incidentes;
+      if (filtroIncAnio) incsFiltrados = incsFiltrados.filter(i => String(i.fecha).startsWith(filtroIncAnio));
+      if (filtroIncMes) incsFiltrados = incsFiltrados.filter(i => String(i.fecha).slice(5,7) === filtroIncMes);
+      const anio = filtroIncAnio || new Date().getFullYear().toString();
+      const incsAnio = incidentes.filter(i => String(i.fecha).startsWith(anio));
+      const porGravedad = { leve: 0, moderado: 0, grave: 0 };
+      incsAnio.forEach(i => { porGravedad[i.gravedad] = (porGravedad[i.gravedad]||0)+1; });
+      const meses = ['01','02','03','04','05','06','07','08','09','10','11','12'];
+      const nombresMes = ['Ene','Feb','Mar','Abr','May','Jun','Jul','Ago','Sep','Oct','Nov','Dic'];
+      const av = est.avatar || ((est.nombre||'')[0]+(est.apellido||'')[0]);
+
+      document.getElementById('historial-detalle').innerHTML = `
+        <div class="bg-white rounded-xl border overflow-hidden">
+          <div class="px-4 py-4 border-b bg-slate-50 flex items-start gap-4">
+            ${est.foto_url ? `<img src="${est.foto_url}" class="w-16 h-16 rounded-full object-cover">` : `<div class="w-16 h-16 rounded-full bg-primary-100 text-primary-700 flex items-center justify-center text-xl font-bold">${av}</div>`}
+            <div class="flex-1">
+              <div class="flex justify-between">
+                <div>
+                  <h3 class="font-bold">${est.nombre} ${est.apellido}</h3>
+                  <p class="text-sm text-slate-500">${est.grado}</p>
+                  <p class="text-xs text-slate-400">${notas.length} notas · ${incidentes.length} incidentes · ${archivos.length} archivos</p>
+                </div>
+                <button onclick="editarEstudiante('${id}')" class="text-xs text-primary-600 flex items-center gap-1 px-2 py-1 rounded hover:bg-primary-50"><i class="fas fa-pen"></i> Editar</button>
+              </div>
+            </div>
+          </div>
+          <div class="flex border-b">
+            <button onclick="cambiarTabHistorial('notas')" class="flex-1 py-2.5 text-sm font-medium ${historialTab==='notas'?'text-primary-700 border-b-2 border-primary-600':'text-slate-500'}">Notas clínicas</button>
+            <button onclick="cambiarTabHistorial('incidentes')" class="flex-1 py-2.5 text-sm font-medium ${historialTab==='incidentes'?'text-primary-700 border-b-2 border-primary-600':'text-slate-500'}">Incidentes</button>
+            <button onclick="cambiarTabHistorial('archivos')" class="flex-1 py-2.5 text-sm font-medium ${historialTab==='archivos'?'text-primary-700 border-b-2 border-primary-600':'text-slate-500'}">Archivos</button>
+          </div>
+          <div class="p-4">
+            ${historialTab==='notas' ? `
+              <div class="flex justify-end mb-3"><button onclick="abrirModalNota('${id}')" class="bg-primary-600 text-white text-xs px-3 py-1.5 rounded-lg"><i class="fas fa-plus"></i> Nueva nota</button></div>
+              <div class="space-y-3 max-h-[22rem] overflow-y-auto">
+                ${notas.length===0?'<p class="text-slate-400 text-sm text-center py-6">Sin notas</p>':''}
+                ${notas.map(n => `
+                  <div class="border rounded-lg p-3.5">
+                    <span class="text-xs font-medium text-primary-700 bg-primary-50 px-2 py-0.5 rounded">${n.fecha}</span>
+                    <h4 class="font-semibold text-sm mt-1">${n.motivo}</h4>
+                    <p class="text-sm text-slate-600 mt-1">${n.observaciones}</p>
+                    ${n.intervenciones?`<div class="text-xs text-slate-500 bg-slate-50 rounded px-2 py-1.5 mt-2"><strong>Intervenciones:</strong> ${n.intervenciones}</div>`:''}
+                  </div>`).join('')}
+              </div>` : ''}
+            ${historialTab==='incidentes' ? `
+              <div class="flex flex-wrap gap-2 mb-3">
+                <select onchange="filtroIncAnio=this.value;selectEstudiante('${id}')" class="text-xs border rounded-lg px-2 py-1.5">
+                  ${[2026,2025,2024].map(y=>`<option value="${y}" ${filtroIncAnio==y?'selected':''}>${y}</option>`).join('')}
+                </select>
+                <select onchange="filtroIncMes=this.value;selectEstudiante('${id}')" class="text-xs border rounded-lg px-2 py-1.5">
+                  <option value="">Todo el año</option>
+                  ${meses.map((m,i)=>`<option value="${m}" ${filtroIncMes===m?'selected':''}>${nombresMes[i]}</option>`).join('')}
+                </select>
+                <button onclick="abrirModalIncidente('${id}')" class="ml-auto bg-amber-500 text-white text-xs px-3 py-1.5 rounded-lg"><i class="fas fa-plus"></i> Incidente</button>
+              </div>
+              <div class="bg-slate-50 rounded-lg p-3 mb-3 text-xs">
+                <div class="font-medium mb-1">Record ${anio}: ${incsAnio.length} incidente(s)</div>
+                <div class="flex gap-2 flex-wrap">
+                  <span class="px-2 py-0.5 rounded bg-green-100 text-green-700">Leves: ${porGravedad.leve||0}</span>
+                  <span class="px-2 py-0.5 rounded bg-yellow-100 text-yellow-700">Moderados: ${porGravedad.moderado||0}</span>
+                  <span class="px-2 py-0.5 rounded bg-red-100 text-red-700">Graves: ${porGravedad.grave||0}</span>
+                </div>
+              </div>
+              <div class="space-y-2 max-h-[18rem] overflow-y-auto">
+                ${incsFiltrados.length===0?'<p class="text-slate-400 text-sm text-center py-6">Sin incidentes</p>':''}
+                ${incsFiltrados.map(inc => {
+                  const gc = {leve:'bg-green-100 text-green-700',moderado:'bg-yellow-100 text-yellow-700',grave:'bg-red-100 text-red-700'};
+                  return `<div class="border rounded-lg p-3">
+                    <div class="flex gap-2 mb-1 text-xs">
+                      <span class="text-slate-500">${inc.fecha}</span>
+                      <span class="px-1.5 py-0.5 rounded ${gc[inc.gravedad]}">${inc.gravedad}</span>
+                      <span class="px-1.5 py-0.5 rounded bg-slate-100">${inc.tipo}</span>
+                    </div>
+                    <p class="text-sm">${inc.descripcion}</p>
+                    ${inc.acciones?`<p class="text-xs text-slate-500 mt-1"><strong>Acciones:</strong> ${inc.acciones}</p>`:''}
+                  </div>`;
+                }).join('')}
+              </div>` : ''}
+            ${historialTab==='archivos' ? `
+              <div class="flex justify-end mb-3"><button onclick="abrirModalArchivo('${id}')" class="bg-primary-600 text-white text-xs px-3 py-1.5 rounded-lg"><i class="fas fa-upload"></i> Subir</button></div>
+              <div class="space-y-2 max-h-[22rem] overflow-y-auto">
+                ${archivos.length===0?'<p class="text-slate-400 text-sm text-center py-6">Sin archivos</p>':''}
+                ${archivos.map(a => `
+                  <div class="flex items-center gap-3 border rounded-lg p-3">
+                    <div class="w-9 h-9 rounded-lg bg-slate-100 flex items-center justify-center"><i class="fas fa-file-alt text-slate-500"></i></div>
+                    <div class="flex-1 min-w-0">
+                      <div class="text-sm font-medium truncate">${a.nombre}</div>
+                      <div class="text-xs text-slate-400">${a.file_name || ''} · ${a.created_at ? new Date(a.created_at).toLocaleDateString('es') : ''}</div>
+                    </div>
+                    ${a.file_url ? `<a href="${a.file_url}" target="_blank" class="text-xs text-primary-600">Ver</a>` : ''}
+                  </div>`).join('')}
+              </div>` : ''}
+          </div>
+        </div>`;
+    }
+
+    function cambiarTabHistorial(tab) { historialTab = tab; if (selectedEstudianteId) selectEstudiante(selectedEstudianteId); }
+
+    // ==================== CRUD ====================
+    function abrirModalNuevoEstudiante() {
+      document.getElementById('modal-est-titulo').textContent = 'Nuevo estudiante';
+      document.getElementById('est-id').value = '';
+      document.getElementById('est-nombre').value = '';
+      document.getElementById('est-apellido').value = '';
+      document.getElementById('est-grado').value = '1° Medio';
+      document.getElementById('est-foto-url').value = '';
+      openModal('modal-nuevo-estudiante');
+    }
+    function editarEstudiante(id) {
+      const est = estudiantes.find(e => e.id === id);
+      if (!est) return;
+      document.getElementById('modal-est-titulo').textContent = 'Editar estudiante';
+      document.getElementById('est-id').value = id;
+      document.getElementById('est-nombre').value = est.nombre;
+      document.getElementById('est-apellido').value = est.apellido;
+      document.getElementById('est-grado').value = est.grado;
+      document.getElementById('est-foto-url').value = est.foto_url || '';
+      openModal('modal-nuevo-estudiante');
+    }
+
+    async function guardarEstudiante() {
+      const id = document.getElementById('est-id').value;
+      const nombre = document.getElementById('est-nombre').value.trim();
+      const apellido = document.getElementById('est-apellido').value.trim();
+      const grado = document.getElementById('est-grado').value;
+      const foto_url = document.getElementById('est-foto-url').value.trim() || null;
+      if (!nombre || !apellido) { showToast('Completa nombre y apellido'); return; }
+      const avatar = (nombre[0] + apellido[0]).toUpperCase();
+      try {
+        if (id) {
+          const { error } = await supabase.from('estudiantes').update({ nombre, apellido, grado, foto_url, avatar }).eq('id', id);
+          if (error) throw error;
+        } else {
+          const { error } = await supabase.from('estudiantes').insert({ nombre, apellido, grado, foto_url, avatar });
+          if (error) throw error;
+        }
+        closeModal('modal-nuevo-estudiante');
+        await loadAllData();
+        showToast(id ? 'Estudiante actualizado' : 'Estudiante creado');
+        showView('historial');
+      } catch (err) {
+        showToast('Error: ' + err.message);
+      }
+    }
+
+    function abrirModalNota(estId) {
+      document.getElementById('nota-estudiante-id').value = estId;
+      document.getElementById('nota-fecha').value = new Date().toISOString().slice(0,10);
+      document.getElementById('nota-motivo').value = '';
+      document.getElementById('nota-obs').value = '';
+      document.getElementById('nota-interv').value = '';
+      openModal('modal-nota');
+    }
+    async function guardarNota() {
+      const estudiante_id = document.getElementById('nota-estudiante-id').value;
+      const fecha = document.getElementById('nota-fecha').value;
+      const motivo = document.getElementById('nota-motivo').value.trim();
+      const observaciones = document.getElementById('nota-obs').value.trim();
+      const intervenciones = document.getElementById('nota-interv').value.trim() || null;
+      if (!fecha || !motivo || !observaciones) { showToast('Completa los campos'); return; }
+      try {
+        const { error } = await supabase.from('notas_clinicas').insert({ estudiante_id, fecha, motivo, observaciones, intervenciones });
+        if (error) throw error;
+        closeModal('modal-nota');
+        await loadAllData();
+        historialTab = 'notas';
+        selectEstudiante(estudiante_id);
+        showToast('Nota guardada en Supabase');
+      } catch (err) { showToast('Error: ' + err.message); }
+    }
+
+    function abrirModalIncidente(estId) {
+      document.getElementById('inc-estudiante-id').value = estId;
+      document.getElementById('inc-fecha').value = new Date().toISOString().slice(0,10);
+      document.getElementById('inc-tipo').value = 'conductual';
+      document.getElementById('inc-gravedad').value = 'leve';
+      document.getElementById('inc-desc').value = '';
+      document.getElementById('inc-acciones').value = '';
+      openModal('modal-incidente');
+    }
+    async function guardarIncidente() {
+      const estudiante_id = document.getElementById('inc-estudiante-id').value;
+      const fecha = document.getElementById('inc-fecha').value;
+      const tipo = document.getElementById('inc-tipo').value;
+      const gravedad = document.getElementById('inc-gravedad').value;
+      const descripcion = document.getElementById('inc-desc').value.trim();
+      const acciones = document.getElementById('inc-acciones').value.trim() || null;
+      if (!fecha || !descripcion) { showToast('Completa fecha y descripción'); return; }
+      try {
+        const { error } = await supabase.from('incidentes').insert({ estudiante_id, fecha, tipo, gravedad, descripcion, acciones });
+        if (error) throw error;
+        closeModal('modal-incidente');
+        await loadAllData();
+        historialTab = 'incidentes';
+        selectEstudiante(estudiante_id);
+        showToast('Incidente registrado');
+      } catch (err) { showToast('Error: ' + err.message); }
+    }
+
+    function abrirModalArchivo(estId) {
+      document.getElementById('arch-estudiante-id').value = estId;
+      document.getElementById('arch-nombre').value = '';
+      document.getElementById('arch-file-name').value = '';
+      document.getElementById('arch-file-url').value = '';
+      openModal('modal-archivo');
+    }
+    async function guardarArchivo() {
+      const estudiante_id = document.getElementById('arch-estudiante-id').value;
+      const nombre = document.getElementById('arch-nombre').value.trim();
+      const file_name = document.getElementById('arch-file-name').value.trim() || 'archivo';
+      const file_url = document.getElementById('arch-file-url').value.trim() || null;
+      if (!nombre) { showToast('Ingresa un nombre'); return; }
+      try {
+        const { error } = await supabase.from('archivos_clinicos').insert({ estudiante_id, nombre, file_name, file_url });
+        if (error) throw error;
+        closeModal('modal-archivo');
+        await loadAllData();
+        historialTab = 'archivos';
+        selectEstudiante(estudiante_id);
+        showToast('Archivo registrado');
+      } catch (err) { showToast('Error: ' + err.message); }
+    }
+
+    async function crearPublicacion() {
+      const titulo = document.getElementById('pub-titulo').value.trim();
+      const contenido = document.getElementById('pub-contenido').value.trim();
+      const imagen = document.getElementById('pub-imagen-url').value.trim() || null;
+      const video = document.getElementById('pub-video').value.trim() || null;
+      if (!titulo || !contenido) { showToast('Completa título y contenido'); return; }
+      try {
+        const { error } = await supabase.from('publicaciones').insert({ titulo, contenido, imagen, video, autor: 'Dra. Camila Rojas' });
+        if (error) throw error;
+        closeModal('modal-publicacion');
+        ['pub-titulo','pub-contenido','pub-imagen-url','pub-video'].forEach(id => document.getElementById(id).value = '');
+        await loadAllData();
+        showToast('Publicación creada');
+        showView('feed');
+      } catch (err) { showToast('Error: ' + err.message); }
+    }
+
+    async function crearMaterial() {
+      const titulo = document.getElementById('mat-titulo').value.trim();
+      const descripcion = document.getElementById('mat-desc').value.trim();
+      const tipo = document.getElementById('mat-tipo').value;
+      const url = document.getElementById('mat-url').value.trim() || null;
+      if (!titulo) { showToast('Ingresa título'); return; }
+      try {
+        const { error } = await supabase.from('materiales').insert({ titulo, descripcion, tipo, url });
+        if (error) throw error;
+        closeModal('modal-material');
+        await loadAllData();
+        showToast('Material subido');
+        showView('material');
+      } catch (err) { showToast('Error: ' + err.message); }
+    }
+
+    async function crearComunicado() {
+      const asunto = document.getElementById('com-asunto').value.trim();
+      const mensaje = document.getElementById('com-mensaje').value.trim();
+      const destino = document.getElementById('com-destino').value;
+      if (!asunto || !mensaje) { showToast('Completa los campos'); return; }
+      try {
+        const { error } = await supabase.from('comunicados').insert({ asunto, mensaje, destino });
+        if (error) throw error;
+        closeModal('modal-comunicado');
+        await loadAllData();
+        showToast('Comunicado enviado');
+        showView('comunicados');
+      } catch (err) { showToast('Error: ' + err.message); }
+    }
+
+    async function crearJuego() {
+      const titulo = document.getElementById('juego-titulo').value.trim();
+      const descripcion = document.getElementById('juego-desc').value.trim();
+      const categoria = document.getElementById('juego-cat').value;
+      const url = document.getElementById('juego-url').value.trim() || null;
+      if (!titulo) { showToast('Ingresa nombre'); return; }
+      try {
+        const { error } = await supabase.from('juegos').insert({ titulo, descripcion, categoria, url });
+        if (error) throw error;
+        closeModal('modal-juego');
+        await loadAllData();
+        showToast('Juego agregado');
+        showView('juegos');
+      } catch (err) { showToast('Error: ' + err.message); }
+    }
+
+    // ==================== CHAT (local por ahora) ====================
+    const conversaciones = {
+      psicologa: [
+        { id: 'e1', nombre: 'Martín López', rol: 'Estudiante', avatar: 'ML', ultimo: 'Chat demo', hora: '—' },
+        { id: 'e2', nombre: 'Sofía Vargas', rol: 'Estudiante', avatar: 'SV', ultimo: 'Chat demo', hora: '—' }
+      ],
+      estudiante: [{ id: 'psi', nombre: 'Dra. Camila Rojas', rol: 'Psicóloga', avatar: 'CR', ultimo: 'Chat demo', hora: '—' }],
+      padre: [{ id: 'psi', nombre: 'Dra. Camila Rojas', rol: 'Psicóloga', avatar: 'CR', ultimo: 'Chat demo', hora: '—' }]
+    };
+    function renderChatList() {
+      const list = conversaciones[currentRole] || [];
+      document.getElementById('chat-list').innerHTML = list.map(c => `
+        <button onclick="openChat('${c.id}')" class="w-full flex items-center gap-2.5 p-3 hover:bg-slate-50 border-b text-left ${currentChatId===c.id?'bg-primary-50':''}">
+          <div class="w-10 h-10 rounded-full bg-primary-100 text-primary-700 flex items-center justify-center font-bold text-xs">${c.avatar}</div>
+          <div class="flex-1 min-w-0"><div class="font-medium text-sm truncate">${c.nombre}</div><div class="text-xs text-slate-500 truncate">${c.ultimo}</div></div>
+        </button>`).join('');
+      if (list.length && !currentChatId) openChat(list[0].id);
+    }
+    function openChat(id) {
+      currentChatId = id;
+      const conv = (conversaciones[currentRole]||[]).find(c => c.id === id);
+      if (!conv) return;
+      document.getElementById('chat-avatar').textContent = conv.avatar;
+      document.getElementById('chat-name').textContent = conv.nombre;
+      document.getElementById('chat-role').textContent = conv.rol;
+      document.getElementById('chat-area').classList.remove('hidden');
+      document.getElementById('chat-messages').innerHTML = '<p class="text-slate-400 text-sm text-center py-8">Chat demo — los mensajes se pueden conectar a la tabla mensajes después</p>';
+      renderChatList();
+    }
+    function sendMessage() {
+      const input = document.getElementById('chat-input');
+      if (!input.value.trim()) return;
+      const cont = document.getElementById('chat-messages');
+      cont.innerHTML += `<div class="flex justify-end"><div class="chat-bubble bg-primary-600 text-white rounded-2xl px-3.5 py-2 text-sm">${input.value}</div></div>`;
+      input.value = '';
+      cont.scrollTop = cont.scrollHeight;
+    }
+
+    function renderGestion() {
+      if (currentRole !== 'psicologa') return;
+      document.getElementById('stat-estudiantes').textContent = estudiantes.length;
+      let totalNotas = 0, totalIncs = 0, totalArch = 0;
+      Object.values(notasCache).forEach(a => totalNotas += a.length);
+      Object.values(incidentesCache).forEach(a => totalIncs += a.length);
+      Object.values(archivosCache).forEach(a => totalArch += a.length);
+      document.getElementById('stat-sesiones').textContent = totalNotas;
+      document.getElementById('stat-incidentes').textContent = totalIncs;
+      document.getElementById('stat-archivos').textContent = totalArch;
+      const anio = new Date().getFullYear().toString();
+      let html = '';
+      estudiantes.forEach(e => {
+        const incs = (incidentesCache[e.id]||[]).filter(i => String(i.fecha).startsWith(anio));
+        if (!incs.length) return;
+        const graves = incs.filter(i => i.gravedad === 'grave').length;
+        html += `<div class="flex justify-between py-2 border-b last:border-0 text-sm">
+          <span>${e.nombre} ${e.apellido} <span class="text-xs text-slate-400">(${e.grado})</span></span>
+          <span>${incs.length} incidente(s)${graves?` · <span class="text-red-600">${graves} grave(s)</span>`:''}</span>
+        </div>`;
+      });
+      document.getElementById('gestion-incidentes-anio').innerHTML = html || '<p class="text-slate-400 text-sm">Sin incidentes este año</p>';
+    }
+
+    // ==================== UI HELPERS ====================
+    function openModal(id) { const m = document.getElementById(id); m.classList.remove('hidden'); m.classList.add('flex'); }
+    function closeModal(id) { document.getElementById(id).classList.add('hidden'); document.getElementById(id).classList.remove('flex'); }
+    function showToast(msg) {
+      const t = document.getElementById('toast');
+      t.textContent = msg; t.classList.remove('hidden');
+      setTimeout(() => t.classList.add('hidden'), 2800);
+    }
+    document.querySelectorAll('[id^="modal-"]').forEach(modal => {
+      modal.addEventListener('click', e => { if (e.target === modal) closeModal(modal.id); });
+    });
+
+    // Auto-check session on load
+    (async () => {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (session?.user?.email) {
+        const role = ROLE_MAP[session.user.email.toLowerCase()];
+        if (role) await enterApp(role);
+      }
+    })();
+  </script>
+</body>
+</html>
